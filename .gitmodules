@@ -1,0 +1,3 @@
+[submodule "map2map"]
+	path = map2map
+	url = https://github.com/thisisalbertliang/map2map.git
