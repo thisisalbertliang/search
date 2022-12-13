@@ -1,3 +1,4 @@
-[submodule "map2map"]
-	path = map2map
+[submodule "search/map2map"]
+	path = search/map2map
 	url = https://github.com/thisisalbertliang/map2map.git
+	branch = search
