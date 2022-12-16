@@ -2,3 +2,6 @@
 	path = search/map2map
 	url = https://github.com/thisisalbertliang/map2map.git
 	branch = search
+[submodule "search-research-log"]
+	path = search-research-log
+	url = https://github.com/thisisalbertliang/search-research-log.git

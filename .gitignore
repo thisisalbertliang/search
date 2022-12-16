@@ -201,6 +201,7 @@ poetry.toml
 !.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/*.code-snippets
+search.code-workspace
 
 # Local History for Visual Studio Code
 .history/
