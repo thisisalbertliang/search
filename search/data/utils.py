@@ -1,10 +1,13 @@
 import argparse
+from typing import Tuple
 import torch
 
 from map2map.map2map.data.fields import FieldDataset
 
 
-def initialize_style_input_target(args: argparse.Namespace, device: torch.device):
+def initialize_style_input_target(
+    args: argparse.Namespace, device: torch.device
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     dataset = FieldDataset(
         style_pattern=args.style_path,
         in_patterns=[args.init_input_path],
@@ -29,13 +32,14 @@ def initialize_style_input_target(args: argparse.Namespace, device: torch.device
     args.in_chan = dataset.in_chan
     args.out_chan = dataset.tgt_chan
     
-    data = dataset[0]
-    style: torch.Tensor = data['style']
-    input: torch.Tensor = data['input']
-    target: torch.Tensor = data['target']
+    style: torch.Tensor = dataset[0]['style']
+    input: torch.Tensor = dataset[0]['input']
+    target: torch.Tensor = dataset[len(dataset) // 2]['target']
+    true_input: torch.Tensor = dataset[len(dataset) // 2]['input']
     # Add batch dimension
     style = style.unsqueeze(0)
     input = input.unsqueeze(0)
     target = target.unsqueeze(0)
+    true_input = true_input.unsqueeze(0)
     
-    return style.to(device), input.to(device), target.to(device)
+    return style.to(device), input.to(device), target.to(device), true_input.to(device)

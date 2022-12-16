@@ -2,7 +2,7 @@ import argparse
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="SGD on Linear Displacement Field")
+    parser = argparse.ArgumentParser(description="Gradient descent on Linear Displacement Field")
     
     parser.add_argument(
         "--style-path",
@@ -20,18 +20,27 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--load-state",
-        required=True,
+        default="/home/ajliang/map2map/Checkpoints/from_scratch_LH0000_50epochs/state_50.pt",
         type=str,
     )
     parser.add_argument(
         "--lr",
-        default=0.01,
+        default=100,
         type=float,
     )
     parser.add_argument(
-        "--epochs",
-        default=1000,
+        "--seed",
+        default=10620,
         type=int,
+    )
+    parser.add_argument(
+        "--log-interval",
+        default=50,
+    )
+    parser.add_argument(
+        "--experiment-name",
+        default="search",
+        type=str
     )
     
     return parser.parse_args()
