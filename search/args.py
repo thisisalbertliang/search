@@ -20,7 +20,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--load-state",
-        default="/home/ajliang/map2map/Checkpoints/from_scratch_LH0000_50epochs/state_50.pt",
+        default="/home/ajliang/search/search/map2map/checkpoints/DREW-FWD-MODEL/d2d_weights.pt",
         type=str,
     )
     parser.add_argument(
@@ -35,11 +35,17 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--log-interval",
-        default=50,
+        default=1000,
+        type=int,
+    )
+    parser.add_argument(
+        "--save-interval",
+        default=1000,
+        type=int,
     )
     parser.add_argument(
         "--experiment-name",
-        default="search",
+        default="SEARCH-WITH-DREW-FWD-MODEL",
         type=str
     )
     

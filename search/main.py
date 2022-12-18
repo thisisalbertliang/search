@@ -1,6 +1,7 @@
 import argparse
 from typing import Tuple
 from time import strftime, gmtime
+import os
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
@@ -24,13 +25,16 @@ def get_logger(args: argparse.Namespace):
     experiment_name.append(strftime("%Y-%m-%d-%H-%M-%S", gmtime()))
     experiment_name = '_'.join(experiment_name)
 
-    logger = SummaryWriter(f"runs/{experiment_name}")
+    logger = SummaryWriter(
+        os.path.join("runs", "temp", experiment_name)
+    )
     logger.add_text(
         tag="Arguments",
         text_string=str(vars(args)),
         global_step=0,
     )
     
+    args.experiment_name = experiment_name
     return logger
 
 
@@ -118,22 +122,21 @@ def search(args: argparse.Namespace):
     )
     criterion = torch.nn.MSELoss()
 
+    save_dir = os.path.join("checkpoints", args.experiment_name)
+    os.makedirs(save_dir, exist_ok=True)
+
     iteration = 0
     while not torch.allclose(input, true_input, atol=1):
         output = model(input, style)
 
         lag_out, lag_tgt = output, target
         eul_out, eul_tgt = lag2eul([lag_out, lag_tgt])
-
         _, _, lxe_loss, train_loss = compute_loss(
             lag_out, lag_tgt, eul_out, eul_tgt, criterion, logger, iteration
         )
-        optimizer.zero_grad()
-        train_loss.backward()
-        optimizer.step()
 
         if iteration % args.log_interval == 0:
-            print(f"Iteration: {iteration}, lxe loss: {lxe_loss}")
+            print(f"After {iteration} steps: lxe loss = {lxe_loss}")
             plot_slices_and_power(
                 logger, 
                 input, true_input,
@@ -141,6 +144,15 @@ def search(args: argparse.Namespace):
                 eul_out, eul_tgt, 
                 iteration
             )
+        if iteration % args.save_interval == 0:
+            save_path = os.path.join(save_dir, f"input_{iteration}.pt")
+            torch.save(input, save_path)
+            print(f"After {iteration} steps: saved input to {save_path}")
+
+        optimizer.zero_grad()
+        train_loss.backward()
+        optimizer.step()
+
         iteration += 1
 
 
