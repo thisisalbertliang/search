@@ -42,4 +42,11 @@ def initialize_style_input_target(
     target = target.unsqueeze(0)
     true_input = true_input.unsqueeze(0)
     
+    if args.verbose:
+        print("************* Loaded Style, Input, Target, True Input *************")
+        print(f"style shape: {style.shape}, style path: {args.style_path}")
+        print(f"input shape: {input.shape}, input path: {args.init_input_path}")
+        print(f"target shape: {target.shape}, target path: {args.target_output_path}")
+        print("*******************************************************************")
+    
     return style.to(device), input.to(device), target.to(device), true_input.to(device)
