@@ -9,7 +9,11 @@ from map2map.map2map.models import StyledVNet
 from map2map.map2map.utils import load_model_state_dict
 
 
-def load_model(args: argparse.Namespace, device: torch.device) -> StyledVNet:
+def load_model(
+    args: argparse.Namespace,
+    device: torch.device,
+    path_to_model_state: str,
+) -> StyledVNet:
     model: StyledVNet = StyledVNet(
         style_size=args.style_size,
         in_chan=sum(args.in_chan),
@@ -18,14 +22,14 @@ def load_model(args: argparse.Namespace, device: torch.device) -> StyledVNet:
     )
     model.to(device)
 
-    state = torch.load(args.load_model_state, map_location=device)
+    state = torch.load(path_to_model_state, map_location=device)
     load_model_state_dict(model, state["model"], strict=True)
-    
+
     print(
-        f"Loaded model from {args.load_model_state}, which was trained for {state['epoch']} epochs.",
+        f"Loaded model from {path_to_model_state}, which was trained for {state['epoch']} epochs.",
         flush=True
     )
-    
+
     return model
 
 
@@ -42,7 +46,7 @@ def get_logger(args: argparse.Namespace):
         text_string=str(vars(args)),
         global_step=0,
     )
-    
+
     args.experiment_name = experiment_name
     return logger
 
