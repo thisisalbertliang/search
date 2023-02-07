@@ -17,7 +17,7 @@ def _add_common_args(parser: argparse.ArgumentParser):
     # common arguments
     parser.add_argument(
         "--load-forward-model-state",
-        default="/home/ajliang/search/search/map2map/checkpoints/DREW-FWD-MODEL/d2d_weights.pt",
+        default="/home/ajliang/search/model_weights/paper_fwd_d2d_weights.pt",
         type=str,
     )
     parser.add_argument(
@@ -49,6 +49,16 @@ def _add_common_args(parser: argparse.ArgumentParser):
         default=32,
         type=int,
     )
+    parser.add_argument(
+        "--device-ordinal",
+        default=0,
+        type=int
+    )
+    parser.add_argument(
+        "--experiment-name",
+        default="SEARCH-WITH-DREW-FWD-MODEL",
+        type=str,
+    )
 
 
 def _add_gradient_descent_args(subparsers: argparse._SubParsersAction):
@@ -70,11 +80,6 @@ def _add_gradient_descent_args(subparsers: argparse._SubParsersAction):
         "--save-interval",
         default=1000,
         type=int,
-    )
-    parser_gradient_descent.add_argument(
-        "--experiment-name",
-        default="SEARCH-WITH-DREW-FWD-MODEL",
-        type=str,
     )
     parser_gradient_descent.add_argument(
         "--load-backward-model-state",
@@ -101,11 +106,16 @@ def _add_uncertain_args(subparsers: argparse._SubParsersAction):
     )
     parser_uncertain.add_argument(
         "--sample-size",
-        default=100,
+        default=10,
         type=int,
     )
     parser_uncertain.add_argument(
         "--dropout-prob",
-        default=0.5,
+        default=0.1,
         type=float,
+    )
+    parser_uncertain.add_argument(
+        "--dataset-limit",
+        default=100,
+        type=int,
     )
