@@ -1,0 +1,19 @@
+The #1 most OOD simulation is LH1045 with:
+    * relative error: {'omega_m': '66%', 'omega_b': '13%', 'h': '15%', 'n_s': '6%', 'sigma_8': '25%'}
+    * actual params: {'omega_m': 0.4969, 'omega_b': 0.04369, 'h': 0.8053, 'n_s': 0.9097, 'sigma_8': 0.6003}
+
+The #2 most OOD simulation is LH0590 with:
+    * relative error: {'omega_m': '66%', 'omega_b': '3%', 'h': '3%', 'n_s': '23%', 'sigma_8': '24%'}
+    * actual params: {'omega_m': 0.1019, 'omega_b': 0.05165, 'h': 0.6771, 'n_s': 1.1857, 'sigma_8': 0.9921}
+
+The #3 most OOD simulation is LH1988 with:
+    * relative error: {'omega_m': '65%', 'omega_b': '30%', 'h': '13%', 'n_s': '23%', 'sigma_8': '24%'}
+    * actual params: {'omega_m': 0.4945, 'omega_b': 0.06513, 'h': 0.6117, 'n_s': 1.1905, 'sigma_8': 0.6043}
+
+The #4 most OOD simulation is LH0785 with:
+    * relative error: {'omega_m': '65%', 'omega_b': '23%', 'h': '27%', 'n_s': '1%', 'sigma_8': '24%'}
+    * actual params: {'omega_m': 0.1053, 'omega_b': 0.06153, 'h': 0.8891, 'n_s': 0.9523, 'sigma_8': 0.6051}
+
+The #5 most OOD simulation is LH0506 with:
+    * relative error: {'omega_m': '66%', 'omega_b': '6%', 'h': '5%', 'n_s': '22%', 'sigma_8': '23%'}
+    * actual params: {'omega_m': 0.1027, 'omega_b': 0.05319, 'h': 0.7343, 'n_s': 1.1801, 'sigma_8': 0.9847}
