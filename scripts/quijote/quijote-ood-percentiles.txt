@@ -1,0 +1,46 @@
+Backward model is trained on params: {'omega_m': 0.3, 'omega_b': 0.05, 'h': 0.7, 'n_s': 0.965, 'sigma_8': 0.799998}
+
+The 100.0th percentile OOD Quijote simulation is LH1045 with:
+    * relative difference: {'omega_m': '66%', 'omega_b': '13%', 'h': '15%', 'n_s': '6%', 'sigma_8': '25%'}
+    * actual params: {'omega_m': 0.4969, 'omega_b': 0.04369, 'h': 0.8053, 'n_s': 0.9097, 'sigma_8': 0.6003}
+
+The 90.0th percentile OOD Quijote simulation is LH1416 with:
+    * relative difference: {'omega_m': '55%', 'omega_b': '14%', 'h': '7%', 'n_s': '10%', 'sigma_8': '18%'}
+    * actual params: {'omega_m': 0.1363, 'omega_b': 0.04279, 'h': 0.7483, 'n_s': 1.0659, 'sigma_8': 0.6535}
+
+The 80.0th percentile OOD Quijote simulation is LH0715 with:
+    * relative difference: {'omega_m': '64%', 'omega_b': '37%', 'h': '26%', 'n_s': '3%', 'sigma_8': '2%'}
+    * actual params: {'omega_m': 0.4907, 'omega_b': 0.06853, 'h': 0.5179, 'n_s': 0.9323, 'sigma_8': 0.8195}
+
+The 70.0th percentile OOD Quijote simulation is LH1460 with:
+    * relative difference: {'omega_m': '43%', 'omega_b': '5%', 'h': '1%', 'n_s': '0%', 'sigma_8': '16%'}
+    * actual params: {'omega_m': 0.1705, 'omega_b': 0.04731, 'h': 0.6937, 'n_s': 0.9695, 'sigma_8': 0.6687}
+
+The 60.0th percentile OOD Quijote simulation is LH0700 with:
+    * relative difference: {'omega_m': '37%', 'omega_b': '29%', 'h': '20%', 'n_s': '2%', 'sigma_8': '15%'}
+    * actual params: {'omega_m': 0.4117, 'omega_b': 0.03563, 'h': 0.8399, 'n_s': 0.9421, 'sigma_8': 0.6779}
+
+The 50.0th percentile OOD Quijote simulation is LH0727 with:
+    * relative difference: {'omega_m': '45%', 'omega_b': '6%', 'h': '20%', 'n_s': '24%', 'sigma_8': '1%'}
+    * actual params: {'omega_m': 0.4343, 'omega_b': 0.05293, 'h': 0.5571, 'n_s': 1.1979, 'sigma_8': 0.8057}
+
+The 40.0th percentile OOD Quijote simulation is LH0662 with:
+    * relative difference: {'omega_m': '24%', 'omega_b': '8%', 'h': '24%', 'n_s': '4%', 'sigma_8': '15%'}
+    * actual params: {'omega_m': 0.3733, 'omega_b': 0.05409, 'h': 0.8691, 'n_s': 0.9221, 'sigma_8': 0.6777}
+
+The 30.0th percentile OOD Quijote simulation is LH0482 with:
+    * relative difference: {'omega_m': '26%', 'omega_b': '11%', 'h': '6%', 'n_s': '19%', 'sigma_8': '6%'}
+    * actual params: {'omega_m': 0.2213, 'omega_b': 0.04473, 'h': 0.7405, 'n_s': 1.1493, 'sigma_8': 0.8463}
+
+The 20.0th percentile OOD Quijote simulation is LH0853 with:
+    * relative difference: {'omega_m': '4%', 'omega_b': '35%', 'h': '4%', 'n_s': '3%', 'sigma_8': '22%'}
+    * actual params: {'omega_m': 0.3109, 'omega_b': 0.06729, 'h': 0.6729, 'n_s': 0.9933, 'sigma_8': 0.9771}
+
+The 10.0th percentile OOD Quijote simulation is LH1026 with:
+    * relative difference: {'omega_m': '7%', 'omega_b': '28%', 'h': '15%', 'n_s': '16%', 'sigma_8': '11%'}
+    * actual params: {'omega_m': 0.3203, 'omega_b': 0.06415, 'h': 0.8055, 'n_s': 1.1217, 'sigma_8': 0.8907}
+
+The 0.0th percentile OOD Quijote simulation is LH0699 with:
+    * relative difference: {'omega_m': '1%', 'omega_b': '34%', 'h': '25%', 'n_s': '13%', 'sigma_8': '1%'}
+    * actual params: {'omega_m': 0.2957, 'omega_b': 0.06705, 'h': 0.5225, 'n_s': 1.0913, 'sigma_8': 0.8061}
+
