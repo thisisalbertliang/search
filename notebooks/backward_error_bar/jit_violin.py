@@ -1,12 +1,18 @@
-import glob
-import numpy as np
+import numpy as np; np.random.seed(10620)
 import matplotlib.pyplot as plt
 from Pk_library import PKL
 from tqdm import tqdm
 import argparse
 import os
-import pickle
-import torch
+from itertools import islice
+import sys; sys.path.append('/ocean/projects/cis230021p/lianga/search')
+
+import torch; torch.manual_seed(10620)
+from torch.utils.data import DataLoader
+
+from search.map2map.map2map.data import FieldDataset
+from search.map2map.map2map.models import StyledVNet, narrow_cast
+from search.map2map.map2map.utils import load_model_state_dict
 
 
 class RunningStats:
@@ -46,134 +52,107 @@ class RunningStats:
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    # uncertainty
     parser.add_argument('--dropout-prob', type=float, required=True)
     parser.add_argument('--pow-spec-last', action='store_true', default=False)
+    parser.add_argument('--sample-size', type=int, default=30)
+    # data
+    parser.add_argument('--simulation-number', type=int, default=1045)
+    parser.add_argument('--data-dir', type=str, default='/ocean/projects/cis230021p/lianga/quijote')
+    parser.add_argument('--sample-index', type=int, default=150)
+    # misc
+    parser.add_argument('--in-norms', type=str, default='cosmology.dis')
+    parser.add_argument('--tgt-norms', type=str, default='cosmology.dis')
+    parser.add_argument('--callback-at', type=str, default='.')
+    parser.add_argument('--crop', type=int, default=32)
+    parser.add_argument('--in-pad', type=int, default=48)
+    parser.add_argument('--tgt-pad', type=int, default=48)
+    parser.add_argument('--scale-factor', type=int, default=1)
+    # model
+    parser.add_argument('--model-state-dict', type=str, default='/ocean/projects/cis230021p/lianga/search/model_weights/backward_model.pt')
+
     return parser.parse_args()
 
 
-def plot_log_pow_spec_of_mean_lin(dropout_prob: float):
-    box_length: int = 1000 # Mpc/h
-    axis: int = 0 # 0, 1, 2 for x, y, z respectively
+def get_data_loader(args):
+    data_dir = os.path.join(args.data_dir, f'LH{args.simulation_number}')
 
-    pred_lin_files = sorted(glob.glob(
-        f'/user_data/ajliang/Quijote/LH0663/mc_dropout/{dropout_prob}/*/lin_out.npy'
-    ))
-    sample_size = len(pred_lin_files)
-
-    res_file_path = f'cache/pow_spec_last/dropout-prob-{dropout_prob:.0%}-sample-size-{sample_size}.pkl'
-    if os.path.exists(res_file_path):
-        print(f'{res_file_path} exists. Loading directly...')
-        with open(f'{res_file_path}', 'rb') as f:
-            res = pickle.load(f)
-    else:
-        running_stats = RunningStats()
-        # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        for pred_lin_file in tqdm(pred_lin_files):
-            pred_lin = np.load(pred_lin_file)
-
-            # if device.type == 'cuda':
-            #     pred_lin = torch.from_numpy(pred_lin).to(device)
-
-            running_stats.push(pred_lin)
-
-        mean = running_stats.mean()
-        std = running_stats.standard_deviation()
-
-        # if device.type == 'cuda':
-        #     mean = mean.cpu().numpy()
-        #     std = std.cpu().numpy()
-
-        res = {"mean": mean, "std": std}
-        with open(f'{res_file_path}', 'wb') as f:
-            pickle.dump(res, f)
-
-    mean, std = res['mean'], res['std']
-
-    mean_xpk = PKL.XPk([mean[axis]], box_length, 0, (None, None))
-    mean_pow_spec = mean_xpk.Pk[:, 0, 0]
-    upper_bound_xpk = PKL.XPk([mean[axis] + std[axis]], box_length, 0, (None, None))
-    upper_bound_pow_spec = upper_bound_xpk.Pk[:, 0, 0]
-    lower_bound_xpk = PKL.XPk([mean[axis] - std[axis]], box_length, 0, (None, None))
-    lower_bound_pow_spec = lower_bound_xpk.Pk[:, 0, 0]
-
-    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-    wave_num = mean_xpk.k3D
-
-    ax.plot(wave_num, mean_pow_spec, label='Power Spectrum of Predicted Linear Field')
-    ax.fill_between(
-        wave_num, lower_bound_pow_spec, upper_bound_pow_spec,
-        alpha=0.2, color='blue',
+    dataset = FieldDataset(
+        style_pattern=os.path.join(data_dir, 'params.npy'),
+        in_patterns=[os.path.join(data_dir, 'nonlin.npy')],
+        tgt_patterns=[os.path.join(data_dir, 'lin.npy')],
+        in_norms=[args.in_norms],
+        tgt_norms=[args.tgt_norms],
+        callback_at=args.callback_at,
+        crop=args.crop,
+        in_pad=args.in_pad,
+        tgt_pad=args.tgt_pad,
+        scale_factor=args.scale_factor,
     )
 
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    ax.set_xlabel('Wave Number k (log scale)')
-    ax.set_ylabel('Power Spectrum P(k) (log scale)')
-    ax.legend()
-    ax.set_title(f'Dropout Probability: {dropout_prob:.0%}')
+    args.style_size = dataset.style_size
+    args.in_chan = dataset.in_chan
+    args.out_chan = dataset.tgt_chan
 
-    fig.tight_layout()
-    fig.savefig(f'figs/pow_spec_last/pow-spec-last_dropout-prob-{int(100 * dropout_prob)}.png')
+    loader = DataLoader(dataset, batch_size=1, shuffle=False, pin_memory=True)
+
+    return loader
 
 
-def plot_log_mean_pow_spec(dropout_prob: float):
+def get_pow_spec(X: torch.Tensor, box_length: int, axis: int):
+    # X shape: (batch, channel, x, y, z)
+    X = X.squeeze(0).cpu().numpy()
+    xpk = PKL.XPk([X[axis]], box_length, 0, (None, None))
+    auto = xpk.Pk[:, 0, 0]
+    wave_num = xpk.k3D
+    return auto, wave_num
+
+
+def plot_log_pow_spec_of_mean_lin(args):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     box_length: int = 1000 # Mpc/h
     axis: int = 0 # 0, 1, 2 for x, y, z respectively
 
-    pred_lin_files = sorted(glob.glob(
-        f'/user_data/ajliang/Quijote/LH0663/mc_dropout/{dropout_prob}/*/lin_out.npy'
-    ))
+    loader = get_data_loader(args)
+    # get the nth sample from the loader
+    sample = next(islice(loader, args.sample_index, None))
+    input, target, style = sample['input'].to(device), sample['target'].to(device), sample['style'].to(device)
+    print(f'input shape: {input.shape}')
+    print(f'target shape: {target.shape}')
+    print(f'style shape: {style.shape}')
 
-    sample_size = len(pred_lin_files)
-    res_file_path = f'cache/pow_spec_first/dropout-prob-{dropout_prob:.0%}-sample-size-{sample_size}.pkl'
-    if os.path.exists(f'{res_file_path}'):
-        print(f'{res_file_path} exists. Loading directly...')
-        with open(f'{res_file_path}', 'rb') as f:
-            res = pickle.load(f)
-    else:
-        pred_lin_pow_specs = []
-        for pred_lin_file in tqdm(pred_lin_files):
-            pred_lin = np.load(pred_lin_file)
+    model = StyledVNet(args.style_size, sum(args.in_chan), sum(args.out_chan),
+                       dropout_prob=args.dropout_prob,
+                    scale_factor=args.scale_factor)
+    state = torch.load(args.model_state_dict, map_location=device)
+    load_model_state_dict(model, state['model'], strict=True)
+    model.to(device)
 
-            xpk = PKL.XPk([pred_lin[axis]], box_length, 0, (None, None))
+    model.eval()
 
-            pred_lin_auto = xpk.Pk[:, 0, 0]
+    stats = RunningStats()
+    with torch.no_grad():
+        for i in tqdm(range(args.sample_size)):
+            pred_lin = model(input, style)
 
-            pred_lin_pow_specs.append(pred_lin_auto)
+            if i == 0:
+                print(f'pred_lin shape: {pred_lin.shape}')
 
-        pred_lin_pow_specs = np.vstack(pred_lin_pow_specs)
+            pred_lin_auto, wave_num = get_pow_spec(pred_lin, box_length, axis)
+            stats.push(pred_lin_auto)
 
-        res = {'pred_lin_pow_specs': pred_lin_pow_specs, 'wave_num': xpk.k3D}
-        with open(f'{res_file_path}', 'wb') as f:
-            pickle.dump(res, f)
-
-    pred_lin_pow_specs, wave_num = res['pred_lin_pow_specs'], res['wave_num']
+        mean = stats.mean()
+        std = stats.standard_deviation()
 
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-    # ax.loglog(
-    #     wave_num,
-    #     np.mean(pred_lin_pow_spec, axis=0),
-    #     label='Power Spectrum of Predicted Linear Field'
-    # )
 
-    mean = np.mean(pred_lin_pow_specs, axis=0)
-    std = np.std(pred_lin_pow_specs, axis=0)
-    # max = np.max(pred_lin_pow_specs, axis=0)
-    # min = np.min(pred_lin_pow_specs, axis=0)
-    # std = 100
-
+    # plot power spectrum error bars
     ax.plot(
         wave_num,
         mean,
         label='Power Spectrum of Predicted Linear Field'
     )
-    # ax.fill_between(
-    #     wave_num,
-    #     np.mean(pred_lin_pow_spec, axis=0) - 10,
-    #     np.mean(pred_lin_pow_spec, axis=0) + 10,
-    #     alpha=0.2,
-    #     color='blue'
-    # )
     ax.fill_between(
         wave_num,
         mean - std, # min,
@@ -181,6 +160,12 @@ def plot_log_mean_pow_spec(dropout_prob: float):
         alpha=0.2,
         color='blue'
     )
+    # plot power spectrum of target
+    pred_lin, target = narrow_cast(pred_lin, target)
+    pow_spec_target, wave_num = get_pow_spec(target, box_length, axis)
+    ax.plot(
+        wave_num, pow_spec_target, label='Power Spectrum of True Linear Field'
+    )
 
     ax.set_xscale('log')
     ax.set_yscale('log')
@@ -188,15 +173,14 @@ def plot_log_mean_pow_spec(dropout_prob: float):
     ax.set_xlabel('Wave Number k (log scale)')
     ax.set_ylabel('Power Spectrum P(k) (log scale)')
     ax.legend()
-    ax.set_title(f'Dropout Probability: {dropout_prob:.0%}')
+    ax.set_title(f'Dropout Probability: {args.dropout_prob:.0%}')
 
     fig.tight_layout()
-    fig.savefig(f'figs/pow_spec_first/pow-spec-first_dropout-prob-{int(100 * dropout_prob)}.png')
+    fig_path = f'figs/LH{args.simulation_number}/dropout-prob-{args.dropout_prob:.0}-sample-size-{args.sample_size}.png'
+    os.makedirs(os.path.dirname(fig_path), exist_ok=True)
+    fig.savefig(fig_path)
 
 
 if __name__ == '__main__':
     args = parse_args()
-    if not args.pow_spec_last:
-        plot_log_mean_pow_spec(dropout_prob=args.dropout_prob)
-    else:
-        plot_log_pow_spec_of_mean_lin(dropout_prob=args.dropout_prob)
+    plot_log_pow_spec_of_mean_lin(args)
