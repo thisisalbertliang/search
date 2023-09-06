@@ -70,6 +70,8 @@ def parse_args():
     parser.add_argument('--scale-factor', type=int, default=1)
     # model
     parser.add_argument('--model-state-dict', type=str, default='/ocean/projects/cis230021p/lianga/search/model_weights/backward_model.pt')
+    # misc
+    parser.add_argument('--experiment-name', type=str, default=None)
 
     return parser.parse_args()
 
@@ -99,13 +101,24 @@ def get_data_loader(args):
     return loader
 
 
-def get_pow_spec(X: torch.Tensor, box_length: int, axis: int):
-    # X shape: (batch, channel, x, y, z)
-    X = X.squeeze(0).cpu().numpy()
-    xpk = PKL.XPk([X[axis]], box_length, 0, (None, None))
-    auto = xpk.Pk[:, 0, 0]
+def get_pow_spec(pred: torch.Tensor, target: torch.Tensor, box_length: int, axis: int):
+    assert pred.shape == target.shape
+
+    pred = pred.squeeze(0).cpu().numpy()
+    target = target.squeeze(0).cpu().numpy()
+    xpk = PKL.XPk((pred[axis], target[axis]), box_length, 0, (None, None))
+
+    pred_auto = xpk.Pk[:,0,0] #auto ps of predicted field
+    target_auto = xpk.Pk[:,0,1] # auto ps of original field
+    cross = xpk.XPk[:,0][:,0] # cross ps
     wave_num = xpk.k3D
-    return auto, wave_num
+
+    return pred_auto, target_auto, cross, wave_num
+
+    # xpk = PKL.XPk([X[axis]], box_length, 0, (None, None))
+    # auto = xpk.Pk[:, 0, 0]
+    # wave_num = xpk.k3D
+    # return auto, wave_num
 
 
 def plot_log_pow_spec_of_mean_lin(args):
@@ -114,6 +127,7 @@ def plot_log_pow_spec_of_mean_lin(args):
     box_length: int = 1000 # Mpc/h
     axis: int = 0 # 0, 1, 2 for x, y, z respectively
 
+    # load data
     loader = get_data_loader(args)
     # get the nth sample from the loader
     sample = next(islice(loader, args.sample_index, None))
@@ -122,6 +136,7 @@ def plot_log_pow_spec_of_mean_lin(args):
     print(f'target shape: {target.shape}')
     print(f'style shape: {style.shape}')
 
+    # load model
     model = StyledVNet(args.style_size, sum(args.in_chan), sum(args.out_chan),
                        dropout_prob=args.dropout_prob,
                     scale_factor=args.scale_factor)
@@ -131,54 +146,98 @@ def plot_log_pow_spec_of_mean_lin(args):
 
     model.eval()
 
-    stats = RunningStats()
+    pow_spec_stats = RunningStats()
+    tf_error_stats = RunningStats()
+    stocs_stats = RunningStats()
     with torch.no_grad():
         for i in tqdm(range(args.sample_size)):
-            pred_lin = model(input, style)
+            pred = model(input, style)
 
             if i == 0:
-                print(f'pred_lin shape: {pred_lin.shape}')
+                print(f'pred_lin shape: {pred.shape}')
+                _, target = narrow_cast(pred, target)
 
-            pred_lin_auto, wave_num = get_pow_spec(pred_lin, box_length, axis)
-            stats.push(pred_lin_auto)
+            pred_auto, target_auto, cross, wave_num = get_pow_spec(pred, target, box_length, axis)
 
-        mean = stats.mean()
-        std = stats.standard_deviation()
+            pow_spec_stats.push(pred_auto) # power spectrum of predicted linear field
 
-    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+            tf_error = np.sqrt(pred_auto / target_auto) - 1 # transfer function fractional error
+            tf_error_stats.push(tf_error)
 
-    # plot power spectrum error bars
-    ax.plot(
-        wave_num,
-        mean,
-        label='Power Spectrum of Predicted Linear Field'
-    )
-    ax.fill_between(
-        wave_num,
-        mean - std, # min,
-        mean + std, # max,
-        alpha=0.2,
-        color='blue'
-    )
-    # plot power spectrum of target
-    pred_lin, target = narrow_cast(pred_lin, target)
-    pow_spec_target, wave_num = get_pow_spec(target, box_length, axis)
-    ax.plot(
-        wave_num, pow_spec_target, label='Power Spectrum of True Linear Field'
-    )
+            stoc = 1 - (cross / np.sqrt(pred_auto * target_auto))**2 # stochastoicity
+            stocs_stats.push(stoc)
 
-    ax.set_xscale('log')
-    ax.set_yscale('log')
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(16, 4))
 
-    ax.set_xlabel('Wave Number k (log scale)')
-    ax.set_ylabel('Power Spectrum P(k) (log scale)')
-    ax.legend()
-    ax.set_title(f'Dropout Probability: {args.dropout_prob:.0%}')
+    def plot_power_spectrum_error_bar():
+        pow_spec_mean = pow_spec_stats.mean()
+        pow_spec_std = pow_spec_stats.standard_deviation()
+
+        ax1.plot(
+            wave_num,
+            pow_spec_mean,
+            label='Power Spectrum of Predicted Linear Field'
+        )
+        ax1.fill_between(
+            wave_num,
+            pow_spec_mean - pow_spec_std, # min,
+            pow_spec_mean + pow_spec_std, # max,
+            alpha=0.2,
+            color='blue'
+        )
+        # plot power spectrum of target
+        ax1.plot(
+            wave_num, target_auto, label='Power Spectrum of True Linear Field'
+        )
+
+        ax1.set_xscale('log')
+        ax1.set_yscale('log')
+
+        ax1.set_xlabel('Wave Number k (log scale)')
+        ax1.set_ylabel('Power Spectrum P(k) (log scale)')
+        ax1.legend()
+        ax1.set_title(f'Dropout Probability: {args.dropout_prob:.0%}')
+
+    def plot_transfer_function_fractional_error():
+        tf_error_mean = tf_error_stats.mean()
+        tf_error_std = tf_error_stats.standard_deviation()
+
+        ax2.semilogx(wave_num, tf_error_mean, color='red')
+        ax2.fill_between(
+            wave_num, tf_error_mean - tf_error_std, tf_error_mean + tf_error_std,
+            alpha=0.2, color='red'
+        )
+        ax2.set_xlabel('k')
+        ax2.set_ylabel('Transfer function fractional errors')
+        ax2.set_title('Transfer function fractional errors vs k')
+
+    def plot_stochasticity():
+        stoc_mean = stocs_stats.mean()
+        stoc_std = stocs_stats.standard_deviation()
+
+        ax3.semilogx(wave_num, stoc_mean, color='green')
+        ax3.fill_between(
+            wave_num, stoc_mean - stoc_std, stoc_mean + stoc_std,
+            alpha=0.2, color='green'
+        )
+        ax3.set_xlabel('k')
+        ax3.set_ylabel('1 - (r(k)^2)')
+        ax3.set_title('Stochasticty vs k')
+
+    plot_power_spectrum_error_bar()
+    plot_transfer_function_fractional_error()
+    plot_stochasticity()
 
     fig.tight_layout()
-    fig_path = f'figs/LH{args.simulation_number}/dropout-prob-{args.dropout_prob:.0}-sample-size-{args.sample_size}.png'
+    fig_path = os.path.join(
+        'figs',
+        f'LH{args.simulation_number}',
+        args.experiment_name if args.experiment_name is not None else '',
+        f'dropout-prob-{args.dropout_prob:.0}-sample-size-{args.sample_size}.png'
+    )
     os.makedirs(os.path.dirname(fig_path), exist_ok=True)
     fig.savefig(fig_path)
+    print(f'Figure saved to {fig_path}')
 
 
 if __name__ == '__main__':

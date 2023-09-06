@@ -9,6 +9,7 @@ def parse_args() -> argparse.Namespace:
     subparsers = parser.add_subparsers(dest='task', required=True)
     _add_gradient_descent_args(subparsers)
     _add_uncertain_args(subparsers)
+    _add_conformal_prediction(subparsers)
 
     return parser.parse_args()
 
@@ -56,8 +57,13 @@ def _add_common_args(parser: argparse.ArgumentParser):
     )
     parser.add_argument(
         "--experiment-name",
-        default="SEARCH-WITH-DREW-FWD-MODEL",
+        default="CONFORMAL-PREDICTION",
         type=str,
+    )
+    parser.add_argument(
+        "--dataset-limit",
+        default=None,
+        type=int,
     )
 
 
@@ -73,7 +79,7 @@ def _add_gradient_descent_args(subparsers: argparse._SubParsersAction):
     )
     parser_gradient_descent.add_argument(
         "--log-interval",
-        default=1000,
+        default=None,
         type=int,
     )
     parser_gradient_descent.add_argument(
@@ -114,8 +120,45 @@ def _add_uncertain_args(subparsers: argparse._SubParsersAction):
         default=0.1,
         type=float,
     )
-    parser_uncertain.add_argument(
-        "--dataset-limit",
+
+
+def _add_conformal_prediction(subparsers: argparse._SubParsersAction):
+    """Add arguments for conformal prediction subcommand"""
+    parser_conformal_prediction = subparsers.add_parser("conformal_prediction")
+    _add_common_args(parser_conformal_prediction)
+
+    parser_conformal_prediction.add_argument(
+        "--load-backward-model-state",
+        default="/ocean/projects/cis230021p/lianga/search/search/map2map/model_weights/backward_model.pt",
+        type=str,
+    )
+    parser_conformal_prediction.add_argument(
+        "--load-scores-path",
+        default=None,
+        type=str,
+    )
+    parser_conformal_prediction.add_argument(
+        "--alpha",
+        default=0.05,
+        type=float,
+    )
+    parser_conformal_prediction.add_argument(
+        "--calibration-simulation-index",
         default=100,
+        type=int,
+    )
+    parser_conformal_prediction.add_argument(
+        "--evaluation-simulation-index",
+        default=101,
+        type=int,
+    )
+    parser_conformal_prediction.add_argument(
+        "--quijote-data-dir",
+        default="/ocean/projects/cis230021p/lianga/quijote",
+        type=str,
+    )
+    parser_conformal_prediction.add_argument(
+        "--log-interval",
+        default=1000,
         type=int,
     )
